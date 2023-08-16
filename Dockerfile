@@ -49,7 +49,7 @@ RUN --mount=type=cache,target=/root/.cache \
 
 FROM --platform=${BUILDPLATFORM} gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=build /src/cluster-api-provider-k3s/manager .
+COPY --from=build /workspace/manager .
 # Use uid of nonroot user (65532) because kubernetes expects numeric user when applying pod security policies
 USER 65532
 ENTRYPOINT ["/manager"]
