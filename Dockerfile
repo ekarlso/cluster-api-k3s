@@ -41,9 +41,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     go build ./bootstrap/main.go
 
-RUN --mount=type=cache,target=/root/.cache --mount=type=cache,target=/go/pkg \
+RUN --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 \
-    go build -mod=vendor -ldflags "${LDFLAGS} -extldflags '-static'" \
+    go build -ldflags "${LDFLAGS} -extldflags '-static'" \
     -o manager ${package}
 
 FROM --platform=${BUILDPLATFORM} gcr.io/distroless/static:nonroot
