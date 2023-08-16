@@ -208,15 +208,16 @@ docker-build-controlplane: manager-controlplane ## Build control-plane
 docker-push-controlplane: ## Push control-plane
 	docker push ${CONTROLPLANE_IMG}
 
-.PHONY: release-notes-bootstrap
-release-notes-bootstrap: $(RELEASE_NOTES_DIR) $(RELEASE_NOTES)
+release: release-bootstrap release-controlplane
+
+.PHONY: release-notes
+release-notes: $(RELEASE_NOTES_DIR) $(RELEASE_NOTES)
 	if [ -n "${PRE_RELEASE}" ]; then \
 	echo ":rotating_light: This is a RELEASE CANDIDATE. Use it only for testing purposes. If you find any bugs, file an [issue](https://github.com/kubernetes-sigs/cluster-api/issues/new)." > $(RELEASE_NOTES_DIR)/$(RELEASE_TAG).md; \
 	else \
 	go run ./hack/tools/release/notes.go --from=$(PREVIOUS_TAG) > $(RELEASE_NOTES_DIR)/$(RELEASE_TAG).md; \
 	fi
 
-release: release-bootstrap release-controlplane
 ## --------------------------------------
 ## Help
 ## --------------------------------------
