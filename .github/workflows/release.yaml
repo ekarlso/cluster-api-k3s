@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [bootsrap, controlplane]
+        target: [bootstrap, controlplane]
 
     steps:
       - name: Checkout code
