@@ -15,13 +15,14 @@
 # Build the manager binary
 FROM --platform=${BUILDPLATFORM} docker.io/library/golang:1.21.0 as build
 ARG TARGETOS TARGETARCH
+ARG package
 
 COPY . /src/cluster-api-provider-k3s
 WORKDIR /src/cluster-api-provider-k3s
 RUN --mount=type=cache,target=/root/.cache --mount=type=cache,target=/go/pkg \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 \
     go build -mod=vendor -ldflags "${LDFLAGS} -extldflags '-static'" \
-    -o manager main.go
+    -o manager ./${package}/main.go
 
 FROM --platform=${BUILDPLATFORM} gcr.io/distroless/static:nonroot
 WORKDIR /
