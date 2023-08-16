@@ -17,12 +17,34 @@ FROM --platform=${BUILDPLATFORM} docker.io/library/golang:1.21.0 as build
 ARG TARGETOS TARGETARCH
 ARG package
 
-COPY . /src/cluster-api-provider-k3s
-WORKDIR /src/cluster-api-provider-k3s
+WORKDIR /workspace
+
+# Run this with docker build --build-arg goproxy=$(go env GOPROXY) to override the goproxy
+ARG goproxy=https://proxy.golang.org
+# Run this with docker build --build-arg package=./controlplane/kubeadm or --build-arg package=./bootstrap/kubeadm
+ENV GOPROXY=$goproxy
+
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+
+# Cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+# Copy the sources
+COPY ./ ./
+
+# Cache the go build into the Go’s compiler cache folder so we take benefits of compiler caching across docker build calls
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    go build ./bootstrap/main.go
+
 RUN --mount=type=cache,target=/root/.cache --mount=type=cache,target=/go/pkg \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 \
     go build -mod=vendor -ldflags "${LDFLAGS} -extldflags '-static'" \
-    -o manager ./${package}/main.go
+    -o manager ${package}
 
 FROM --platform=${BUILDPLATFORM} gcr.io/distroless/static:nonroot
 WORKDIR /
