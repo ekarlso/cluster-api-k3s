@@ -94,6 +94,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set release
+        run: echo "RELEASE_TAG=${GITHUB_REF:10}" >> $GITHUB_ENV
+
       - uses: actions/setup-go@v4
         with:
           go-version: "${{ env.GO_VERSION }}"
@@ -118,8 +121,6 @@ jobs:
 
       - name: manifest
         run: make release-notes
-        env:
-          TAG: ${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
 
       - name: Create Release
         id: create_release
@@ -128,6 +129,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: out/*
-          body: ${{ env.RELEASE_NOTES }}
+          body_path: _releasenotes/${{ env.RELEASE_TAG }}.md
           draft: true
           prerelease: false
