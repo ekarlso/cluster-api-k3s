@@ -46,7 +46,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          images: ${{ env.REGISTRY }}/${{ matrix.target }}-${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.target }}
           flavor: latest=false
           tags: type=ref,event=tag
 
@@ -115,9 +115,14 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-controlplane
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-bootstrap
           flavor: latest=false
           tags: type=ref,event=tag
+
+      - name: manifest
+        run: make release
 
       - name: manifest
         run: make release-notes
