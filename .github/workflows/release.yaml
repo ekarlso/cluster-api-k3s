@@ -9,6 +9,10 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   GO_VERSION: "1.21"
 
+permissions:
+  packages: write
+  contents: write
+
 jobs:
   image:
     name: Build and push ${{ matrix.target }} image
