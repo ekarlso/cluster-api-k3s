@@ -90,6 +90,32 @@ KUSTOMIZE_VER := v4.0.4
 KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 
+## --------------------------------------
+## Release
+## --------------------------------------
+
+##@ release:
+
+## latest git tag for the commit, e.g., v0.3.10
+RELEASE_TAG ?= $(shell git describe --abbrev=0 2>/dev/null)
+ifneq (,$(findstring -,$(RELEASE_TAG)))
+    PRE_RELEASE=true
+endif
+# the previous release tag, e.g., v0.3.9, excluding pre-release tags
+PREVIOUS_TAG ?= $(shell git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$$" | sort -V | grep -B1 $(RELEASE_TAG) | head -n 1 2>/dev/null)
+## set by Prow, ref name of the base branch, e.g., main
+RELEASE_ALIAS_TAG := $(PULL_BASE_REF)
+RELEASE_DIR := out
+RELEASE_NOTES_DIR := _releasenotes
+
+.PHONY: $(RELEASE_DIR)
+$(RELEASE_DIR):
+	mkdir -p $(RELEASE_DIR)/
+
+.PHONY: $(RELEASE_NOTES_DIR)
+$(RELEASE_NOTES_DIR):
+	mkdir -p $(RELEASE_NOTES_DIR)/
+
 
 all-bootstrap: manager-bootstrap
 
@@ -122,10 +148,9 @@ deploy-bootstrap: manifests-bootstrap
 manifests-bootstrap: $(KUSTOMIZE) $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=bootstrap/config/crd/bases output:rbac:dir=bootstrap/config/rbac
 
-release-bootstrap: manifests-bootstrap ## Release bootstrap
-	mkdir -p out
+release-bootstrap:$(RELEASE_DIR) manifests-bootstrap ## Release bootstrap
 	cd bootstrap/config/manager && $(KUSTOMIZE) edit set image controller=${BOOTSTRAP_IMG}
-	$(KUSTOMIZE) build bootstrap/config/default > out/bootstrap-components.yaml
+	$(KUSTOMIZE) build bootstrap/config/default > $(RELEASE_DIR)/bootstrap-components.yaml
 
 # Generate code
 generate-bootstrap: $(CONTROLLER_GEN)
@@ -170,10 +195,9 @@ deploy-controlplane: manifests-controlplane
 manifests-controlplane: $(KUSTOMIZE) $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) rbac:roleName=manager-role webhook crd paths="./..." output:crd:artifacts:config=controlplane/config/crd/bases output:rbac:dir=controlplane/config/rbac
 
-release-controlplane: manifests-controlplane ## Release control-plane
-	mkdir -p out
+release-controlplane: $(RELEASE_DIR) manifests-controlplane ## Release control-plane
 	cd controlplane/config/manager && $(KUSTOMIZE) edit set image controller=${CONTROLPLANE_IMG}
-	$(KUSTOMIZE) build controlplane/config/default > out/control-plane-components.yaml
+	$(KUSTOMIZE) build controlplane/config/default > $(RELEASE_DIR)/control-plane-components.yaml
 
 generate-controlplane: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="$(shell pwd)/controlplane/..." 
@@ -183,6 +207,14 @@ docker-build-controlplane: manager-controlplane ## Build control-plane
 
 docker-push-controlplane: ## Push control-plane
 	docker push ${CONTROLPLANE_IMG}
+
+.PHONY: release-notes-bootstrap
+release-notes-bootstrap: $(RELEASE_NOTES_DIR) $(RELEASE_NOTES)
+	if [ -n "${PRE_RELEASE}" ]; then \
+	echo ":rotating_light: This is a RELEASE CANDIDATE. Use it only for testing purposes. If you find any bugs, file an [issue](https://github.com/kubernetes-sigs/cluster-api/issues/new)." > $(RELEASE_NOTES_DIR)/$(RELEASE_TAG).md; \
+	else \
+	go run ./hack/tools/release/notes.go --from=$(PREVIOUS_TAG) > $(RELEASE_NOTES_DIR)/$(RELEASE_TAG).md; \
+	fi
 
 release: release-bootstrap release-controlplane
 ## --------------------------------------

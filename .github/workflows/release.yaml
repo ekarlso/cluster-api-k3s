@@ -7,7 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: '1.20'
+  GO_VERSION: "1.20"
 
 jobs:
   image:
@@ -71,6 +71,7 @@ jobs:
           push: true
           build-args: |
             LDFLAGS=${{ env.DOCKER_BUILD_LDFLAGS }}
+            builder_image=docker.io/library/golang:1.21.0
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
@@ -113,20 +114,9 @@ jobs:
           tags: type=ref,event=tag
 
       - name: manifest
-        run: make release-${{ matrix.target }}
+        run: make release-notes
         env:
           TAG: ${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-
-      - name: Generate Release Notes
-        run: |
-          release_notes=$(gh api repos/{owner}/{repo}/releases/generate-notes -F tag_name=${{ github.ref }} --jq .body)
-          echo 'RELEASE_NOTES<<EOF' >> $GITHUB_ENV
-          echo "${release_notes}" >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
 
       - name: Create Release
         id: create_release
@@ -134,7 +124,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: out/release/*
+          files: out/*
           body: ${{ env.RELEASE_NOTES }}
-          draft: false
+          draft: true
           prerelease: false
